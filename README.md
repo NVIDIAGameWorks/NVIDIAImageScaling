@@ -1,1 +1,1 @@
-# NIS-SDK
+# NVIDIA Image Scaling
