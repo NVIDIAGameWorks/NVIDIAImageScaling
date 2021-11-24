@@ -138,14 +138,12 @@ typedef float16_t NVF;
 typedef min16float4 NVF4;
 typedef min16float NVF;
 #endif // NIS_HLSL_6_2
-#define NIS_SCALE_INT 1
-#define NIS_SCALE_FLOAT 1.0
 #else
 typedef float4 NVF4;
 typedef float NVF;
-#define NIS_SCALE_INT 255
-#define NIS_SCALE_FLOAT 255.0
 #endif // NIS_USE_HALF_PRECISION
+#define NIS_SCALE_INT 1
+#define NIS_SCALE_FLOAT 1.f
 
 // Loop unrolling
 #ifndef NIS_UNROLL
@@ -416,7 +414,7 @@ float EvalPoly6(const float pxl[6], int phase_int)
     }
 
     // let's compute a piece-wise ramp based on luma
-    const float y_scale = 1.0f - saturate((y * (1.0f / 255) - kSharpStartY) * kSharpScaleY);
+    const float y_scale = 1.0f - saturate((y * (1.0f / NIS_SCALE_FLOAT) - kSharpStartY) * kSharpScaleY);
 
     // scale the ramp to sharpen as a function of luma
     const float y_sharpness = y_scale * kSharpStrengthScale + kSharpStrengthMin;
@@ -604,17 +602,15 @@ void NVScaler(uint2 blockIdx, uint threadIdx)
     numPixelsX += numPixelsX & 0x1;
     numPixelsY += numPixelsY & 0x1;
 
-    const float invNumPixelX = 1.0f / numPixelsX;
-    const uint numPixels = numPixelsX * numPixelsY;
+    const int numPixels = numPixelsX * numPixelsY;
 
     // fill in input luma tile in batches of 2x2 pixels
     // we use texture gather to get extra support necessary
     // to compute 2x2 edge map outputs too
-    for (uint i = threadIdx * 2; i < numPixels / 2; i += blockDim * 2)
+    for (int i = threadIdx * 2; i < numPixels / 2; i += blockDim * 2)
     {
-        float py = floor(i * invNumPixelX);
-        const float px = i - py * numPixelsX;
-        py *= 2.0f;
+        int py = i / numPixelsX * 2;
+        int px = i % numPixelsX;
 
         // 0.5 to be in the center of texel
         // -1.0 to sample top-left corner of 3x3 halo necessary
@@ -661,7 +657,7 @@ void NVScaler(uint2 blockIdx, uint threadIdx)
         shEdgeMap[idx + numPixelsX] = (NVF4)GetEdgeMap(p, 1, 0);
         shEdgeMap[idx + numPixelsX + 1] = (NVF4)GetEdgeMap(p, 1, 1);
 
-        // normalize luma to 255.0f and write out to shmem
+        // write out luma to shmem
         shPixelsY[idx] = (NVF)(p[1][1] * NIS_SCALE_FLOAT);
         shPixelsY[idx + 1] = (NVF)(p[1][2] * NIS_SCALE_FLOAT);
         shPixelsY[idx + numPixelsX] = (NVF)(p[2][1] * NIS_SCALE_FLOAT);
@@ -798,7 +794,7 @@ float CalcLTIFast(const float y[5])
     const float a_cont = a_max - a_min;
     const float b_cont = b_max - b_min;
 
-    const float cont_ratio = max(a_cont, b_cont) / (min(a_cont, b_cont) + kEps * (1.0f / 255.0f));
+    const float cont_ratio = max(a_cont, b_cont) / (min(a_cont, b_cont) + kEps * (1.0f / NIS_SCALE_FLOAT));
     return (1.0f - saturate((cont_ratio - kMinContrastRatio) * kRatioNorm)) * kContrastBoost;
 }
 
