@@ -18,21 +18,21 @@
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- 
+
 #pragma once
- 
+
 #include "AppRenderer.h"
- 
+
 using namespace Microsoft::WRL;
- 
-AppRenderer::AppRenderer(DeviceResources& deviceResources, UIData& ui, const std::string& shadersFolder)
+
+AppRenderer::AppRenderer(DeviceResources& deviceResources, UIData& ui, const std::vector<std::string>& shaderPaths)
     : m_ui(ui)
     , m_deviceResources(deviceResources)
-    , m_NVSharpen(deviceResources, shadersFolder)
-    , m_NVScaler(deviceResources, shadersFolder)
+    , m_NVSharpen(deviceResources, shaderPaths)
+    , m_NVScaler(deviceResources, shaderPaths)
     , m_upscale(deviceResources)
 {}
- 
+
 bool AppRenderer::update()
 {
     bool updateWindowSize = m_currentFilePath != m_ui.FilePath || m_currentScale != m_ui.Scale;
@@ -41,10 +41,10 @@ bool AppRenderer::update()
     {
         if (m_currentFilePath != m_ui.FilePath)
         {
-            m_image.load(m_ui.FilePath);
-            m_inputWidth = m_image.width();
-            m_inputHeight = m_image.height();
-            m_deviceResources.createTexture2D(m_inputWidth, m_inputHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, m_image.data(), m_image.rowPitch(), m_image.imageSize(), &m_input);
+            std::vector<uint8_t> image;
+            uint32_t rowPitch;
+            img::load(m_ui.FilePath.string(), image, m_inputWidth, m_inputHeight, rowPitch, img::Fmt::R8G8B8A8);
+            m_deviceResources.createTexture2D(m_inputWidth, m_inputHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_DEFAULT, image.data(), rowPitch, rowPitch * m_inputHeight, &m_input);
             m_deviceResources.createSRV(m_input.Get(), DXGI_FORMAT_R8G8B8A8_UNORM, &m_inputSRV);
             m_currentFilePath = m_ui.FilePath;
         }
@@ -78,7 +78,32 @@ bool AppRenderer::update()
     }
     return updateWindowSize;
 }
- 
+
+void AppRenderer::saveOutput(const std::string& filename)
+{
+    D3D11_TEXTURE2D_DESC desc;
+    m_output->GetDesc(&desc);
+    img::Fmt format = img::Fmt::R8G8B8A8;
+
+    switch (desc.Format)
+    {
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
+        format = img::Fmt::R8G8B8A8;
+        break;
+    case DXGI_FORMAT_R32G32B32A32_FLOAT:
+        format = img::Fmt::R32G32B32A32;
+        break;
+    case DXGI_FORMAT_R16G16B16A16_FLOAT:
+        format = img::Fmt::R16G16B16A16;
+        break;
+    }
+    std::vector<uint8_t> data;
+    uint32_t width, height, rowPitch = 0;
+    constexpr uint32_t channels = 4;
+    m_deviceResources.getTextureData(m_output.Get(), data, width, height, rowPitch);
+    img::save(filename, data.data(), width, height, channels, rowPitch, format);
+}
+
 void AppRenderer::render()
 {
     auto context = m_deviceResources.context();
@@ -112,7 +137,7 @@ void AppRenderer::render()
             m_NVScaler.dispatch(m_inputSRV.GetAddressOf(), m_outputUAV.GetAddressOf());
         }
     }
- 
+
     context->End(m_timeStampEnd.Get());
     context->End(m_timeStampDis.Get());
     D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disData;

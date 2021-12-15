@@ -21,9 +21,6 @@
 
 #include "NVSharpen.h"
 
-#pragma once
-#pragma once
-
 #include <dxgi1_4.h>
 #include <d3d11_3.h>
 #include <d3dcompiler.h>
@@ -34,7 +31,7 @@
 #include "Utilities.h"
 
 
-NVSharpen::NVSharpen(DeviceResources& deviceResources, const std::string& shaderFolder)
+NVSharpen::NVSharpen(DeviceResources& deviceResources, const std::vector<std::string>& shaderPaths)
     : m_deviceResources(deviceResources)
     , m_outputWidth(1)
     , m_outputHeight(1)
@@ -51,6 +48,18 @@ NVSharpen::NVSharpen(DeviceResources& deviceResources, const std::string& shader
     defines.add("NIS_BLOCK_HEIGHT", m_blockHeight);
     defines.add("NIS_THREAD_GROUP_SIZE", threadGroupSize);
 
+    std::string shaderName = "NIS_Main.hlsl";
+    std::string shaderFolder;
+    for (auto& e : shaderPaths)
+    {
+        if (std::filesystem::exists(e + "/" + shaderName))
+        {
+            shaderFolder = e;
+            break;
+        }
+    }
+    if (shaderFolder.empty())
+        throw std::runtime_error("Shader file not found" + shaderName);
     std::wstring wShaderFilename = widen(shaderFolder + "/" + "NIS_Main.hlsl");
     DX::IncludeHeader includeHeader({ shaderFolder });
     DX::CompileComputeShader(m_deviceResources.device(),

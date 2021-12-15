@@ -18,11 +18,11 @@
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- 
+
 #include "DeviceResources.h"
 #include "DXUtilities.h"
- 
- 
+
+
 void DeviceResources::create(HWND hWnd, uint32_t adapterIdx)
 {
     DXGI_SWAP_CHAIN_DESC desc;
@@ -40,7 +40,7 @@ void DeviceResources::create(HWND hWnd, uint32_t adapterIdx)
     desc.SampleDesc.Quality = 0;
     desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
     desc.Windowed = TRUE;
- 
+
     ComPtr<IDXGIFactory> pFactory;
     CreateDXGIFactory(__uuidof(IDXGIFactory) ,(void**)&pFactory);
     ComPtr<IDXGIAdapter> pAdapter;
@@ -57,37 +57,35 @@ void DeviceResources::create(HWND hWnd, uint32_t adapterIdx)
         m_adapter.DedicatedVideoMemory = desc.DedicatedVideoMemory;
         m_adapter.SharedSystemMemory = desc.SharedSystemMemory;
     }
-    else 
+    else
     {
         throw std::runtime_error("Adapter not found");
     }
- 
+
     uint32_t createDeviceFlags = 0;
+
+#ifdef DX11_ENABLE_DEBUG_LAYER
     createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
- 
+#endif
+
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
- 
+
     HRESULT hr = D3D11CreateDeviceAndSwapChain(pAdapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr,
             createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &desc,
             &m_swapChain, &m_d3dDevice, &featureLevel, &m_d3dContext);
     DX::ThrowIfFailed(hr);
- 
+
     initRenderTarget();
     m_initialized = true;
 }
- 
+
 void DeviceResources::initRenderTarget()
 {
-    D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
-    ZeroMemory(&uavDesc, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
-    uavDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
- 
     DX::ThrowIfFailed(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &m_d3dRenderTarget));
     DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(m_d3dRenderTarget.Get(), NULL, &m_d3dRenderTargetView));
 }
- 
+
 void DeviceResources::resizeRenderTarget(uint32_t Width, uint32_t Height, DXGI_FORMAT format)
 {
     m_width = Width;
@@ -98,12 +96,12 @@ void DeviceResources::resizeRenderTarget(uint32_t Width, uint32_t Height, DXGI_F
     DX::ThrowIfFailed(m_swapChain->ResizeBuffers(0, Width, Height, format, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
     initRenderTarget();
 }
- 
+
 void DeviceResources::clearRenderTargetView(const float color[4])
 {
     m_d3dContext->ClearRenderTargetView(m_d3dRenderTargetView.Get(), color);
 }
- 
+
 void DeviceResources::createUAV(ID3D11Resource* pResource, DXGI_FORMAT format, ID3D11UnorderedAccessView** ppUAView)
 {
     D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
@@ -112,7 +110,7 @@ void DeviceResources::createUAV(ID3D11Resource* pResource, DXGI_FORMAT format, I
     uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
     DX::ThrowIfFailed(m_d3dDevice->CreateUnorderedAccessView(pResource, &uavDesc, ppUAView));
 }
- 
+
 void DeviceResources::createSRV(ID3D11Resource* pResource, DXGI_FORMAT format, ID3D11ShaderResourceView** ppSRView)
 {
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -123,7 +121,7 @@ void DeviceResources::createSRV(ID3D11Resource* pResource, DXGI_FORMAT format, I
     srvDesc.Texture2D.MipLevels = 1;
     DX::ThrowIfFailed(m_d3dDevice->CreateShaderResourceView(pResource, &srvDesc, ppSRView));
 }
- 
+
 void DeviceResources::createLinearClampSampler(ID3D11SamplerState** ppSampleState)
 {
     D3D11_SAMPLER_DESC samplerDesc;
@@ -134,10 +132,11 @@ void DeviceResources::createLinearClampSampler(ID3D11SamplerState** ppSampleStat
     samplerDesc.MipLODBias = 0.0f;
     samplerDesc.MaxAnisotropy = 1;
     samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    samplerDesc.MinLOD = -D3D11_FLOAT32_MAX;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
     DX::ThrowIfFailed(m_d3dDevice->CreateSamplerState(&samplerDesc, ppSampleState));
 }
- 
+
 void DeviceResources::createTexture2D(int w, int h, DXGI_FORMAT format, D3D11_USAGE heapType, const void* data, uint32_t rowPitch, uint32_t imageSize, ID3D11Texture2D** ppTexture2D)
 {
     D3D11_TEXTURE2D_DESC desc;
@@ -148,7 +147,7 @@ void DeviceResources::createTexture2D(int w, int h, DXGI_FORMAT format, D3D11_US
     desc.Format = format;
     desc.SampleDesc.Count = 1;
     desc.SampleDesc.Quality = 0;
- 
+
     desc.MiscFlags = 0;
     desc.Usage = heapType;
     if (heapType == D3D11_USAGE_STAGING)
@@ -162,21 +161,21 @@ void DeviceResources::createTexture2D(int w, int h, DXGI_FORMAT format, D3D11_US
         desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
- 
+
     D3D11_SUBRESOURCE_DATA* pInitialData = nullptr;
     D3D11_SUBRESOURCE_DATA initData;
     if (data)
     {
         initData.pSysMem = data;
-        initData.SysMemPitch = static_cast<uint32_t>(rowPitch);
-        initData.SysMemSlicePitch = static_cast<uint32_t>(imageSize);
+        initData.SysMemPitch = rowPitch;
+        initData.SysMemSlicePitch = imageSize;
         pInitialData = &initData;
     }
- 
+
     DX::ThrowIfFailed(m_d3dDevice->CreateTexture2D(&desc, pInitialData, ppTexture2D));
 }
- 
-void DeviceResources::getTextureData(ID3D11Texture2D* texture, uint8_t* data)
+
+void DeviceResources::getTextureData(ID3D11Texture2D* texture, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& rowPitch)
 {
     D3D11_TEXTURE2D_DESC desc;
     texture->GetDesc(&desc);
@@ -189,10 +188,14 @@ void DeviceResources::getTextureData(ID3D11Texture2D* texture, uint8_t* data)
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     DX::ThrowIfFailed(m_d3dContext->Map(stage.Get(), 0, D3D11_MAP_READ, 0, &mappedResource));
     uint8_t* mappData = (uint8_t*)mappedResource.pData;
-    memcpy(data, mappData, mappedResource.DepthPitch);
+    width = desc.Width;
+    height = desc.Height;
+    rowPitch = mappedResource.RowPitch;
+    data.resize(mappedResource.DepthPitch);
+    memcpy(data.data(), mappData, mappedResource.DepthPitch);
     m_d3dContext->Unmap(stage.Get(), 0);
 }
- 
+
 void DeviceResources::updateConstBuffer(void* data, uint32_t size, ID3D11Buffer* ppBuffer)
 {
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -201,7 +204,7 @@ void DeviceResources::updateConstBuffer(void* data, uint32_t size, ID3D11Buffer*
     memcpy(mappData, data, size);
     m_d3dContext->Unmap(ppBuffer, 0);
 }
- 
+
 void DeviceResources::createConstBuffer(void* initialData, uint32_t size, ID3D11Buffer** ppBuffer)
 {
     D3D11_BUFFER_DESC bDesc;
@@ -211,7 +214,7 @@ void DeviceResources::createConstBuffer(void* initialData, uint32_t size, ID3D11
     bDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     bDesc.MiscFlags = 0;
     bDesc.StructureByteStride = 0;
- 
+
     D3D11_SUBRESOURCE_DATA srData;
     srData.pSysMem = initialData;
     DX::ThrowIfFailed(m_d3dDevice->CreateBuffer(&bDesc, &srData, ppBuffer));

@@ -1,26 +1,26 @@
 // The MIT License(MIT)
-// 
+//
 // Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
 // the Software without restriction, including without limitation the rights to
 // use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of
 // the Software, and to permit persons to whom the Software is furnished to do so,
 // subject to the following conditions :
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- 
+
 #include <UIRenderer.h>
- 
+
 UIRenderer::UIRenderer(HWND hwnd, DeviceResources& deviceResources, UIData& ui)
 : m_ui(ui)
 , m_deviceResources(deviceResources)
@@ -29,15 +29,15 @@ UIRenderer::UIRenderer(HWND hwnd, DeviceResources& deviceResources, UIData& ui)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
- 
+
     ImGui::StyleColorsDark();
     ImGui::GetStyle().WindowRounding = 6;
     ImGui::GetStyle().FrameBorderSize = 1;
- 
+
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(m_deviceResources.device(), m_deviceResources.context());
 }
- 
+
 void UIRenderer::cleanUp()
 {
     // Cleanup
@@ -45,7 +45,7 @@ void UIRenderer::cleanUp()
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 }
- 
+
 void UIRenderer::update(double fps)
 {
     m_elapsedTimer.start();
@@ -183,13 +183,13 @@ void UIRenderer::update(double fps)
             ImGui::Text("Presnt Time : %9.2f %s", totalTime - filterTime - uiTime, unitStr.c_str());
             ImGui::Text("Total Time  : %9.2f %s", totalTime, unitStr.c_str());
         }
- 
+
         ImGui::End();
     }
     ImGui::Render();
     m_elapsedTimer.end();
 }
- 
+
 void UIRenderer::render()
 {
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

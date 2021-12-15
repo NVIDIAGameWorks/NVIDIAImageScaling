@@ -1,17 +1,17 @@
 // The MIT License(MIT)
-// 
+//
 // Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
 // the Software without restriction, including without limitation the rights to
 // use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of
 // the Software, and to permit persons to whom the Software is furnished to do so,
 // subject to the following conditions :
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -53,15 +53,15 @@ public:
         m_t0 = m_t1;
         m_numFrames++;
         // update only when time is up
-        if (m_totalTime > m_maxTime) 
+        if (m_totalTime > m_maxTime)
         {
             m_averageTime = m_totalTime / m_numFrames;
             m_totalTime = 0.0;
             m_numFrames = 0;
         }
     }
-    void setMaxTime(double maxTime) { 
-        m_maxTime = maxTime; 
+    void setMaxTime(double maxTime) {
+        m_maxTime = maxTime;
     }
     double averageTime_us() {
         return m_averageTime;
@@ -77,7 +77,7 @@ private:
     double m_totalTime;
     double m_averageTime;
     size_t m_numFrames;
-    std::chrono::steady_clock::time_point m_t0, m_t1;
+    std::chrono::high_resolution_clock::time_point m_t0, m_t1;
 };
 
 class ElapsedTimer {
@@ -113,7 +113,7 @@ private:
     double m_totalTime;
     double m_averageTime;
     size_t m_numIterations;
-    std::chrono::steady_clock::time_point m_t0, m_t1;
+    std::chrono::high_resolution_clock::time_point m_t0, m_t1;
 };
 
 
@@ -177,7 +177,7 @@ private:
     std::string programName;
 };
 
-
+#ifndef NIS_VK_SAMPLE
 inline std::wstring widen(const std::string& str)
 {
     int size = MultiByteToWideChar(CP_ACP, 0, str.c_str(), int(str.size()) + 1, 0, 0);
@@ -185,6 +185,7 @@ inline std::wstring widen(const std::string& str)
     MultiByteToWideChar(CP_ACP, 0, str.c_str(), int(str.size()) + 1, &temp[0], int(temp.size()));
     return std::wstring(&temp[0]);
 }
+#endif
 
 template <typename T>
 inline std::string toStr(T value)
@@ -210,4 +211,7 @@ inline std::string toStr<const char*>(const char* value)
     return value;
 }
 
+inline uint32_t Align(uint32_t x, uint32_t alignment) {
+    return (x + alignment - 1) / alignment * alignment;
+}
 

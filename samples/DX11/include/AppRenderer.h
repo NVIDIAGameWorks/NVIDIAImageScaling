@@ -1,17 +1,17 @@
 // The MIT License(MIT)
-// 
+//
 // Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
 // the Software without restriction, including without limitation the rights to
 // use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of
 // the Software, and to permit persons to whom the Software is furnished to do so,
 // subject to the following conditions :
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -39,11 +39,12 @@ using namespace Microsoft::WRL;
 class AppRenderer
 {
 public:
-    AppRenderer(DeviceResources& deviceResources, UIData& ui, const std::string& shadersFolder);
+    AppRenderer(DeviceResources& deviceResources, UIData& ui, const std::vector<std::string>& shaderPaths);
     bool update();
     void render();
     uint32_t width() { return m_outputWidth; }
     uint32_t height() { return m_outputHeight; }
+    void saveOutput(const std::string& filename);
 private:
     UIData& m_ui;
     DeviceResources& m_deviceResources;
@@ -59,7 +60,6 @@ private:
     ComPtr<ID3D11ShaderResourceView>	m_inputSRV;
     ComPtr<ID3D11UnorderedAccessView>	m_outputUAV;
 
-    Image								m_image;
     std::filesystem::path				m_currentFilePath;
     float							    m_currentScale = 100.f;
     float    							m_currentSharpness = 0.f;

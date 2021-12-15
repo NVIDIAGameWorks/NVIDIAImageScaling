@@ -15,6 +15,13 @@ set(IMGUI_SRC     "${IMGUI_PATH}/backends/imgui_impl_dx11.cpp"
                   "${IMGUI_PATH}/imgui_widgets.cpp"
 )
 
+set(TINYEXR_PATH    "${CMAKE_SOURCE_DIR}/third_party/tinyexr/")
+set(TINYEXR_INCLUDE "${TINYEXR_PATH}" "${TINYEXR_PATH}/deps/miniz")
+set(TINYEXR_SRC     "${TINYEXR_PATH}/deps/miniz/miniz.c")
+
+set(STB_PATH     "${CMAKE_SOURCE_DIR}/third_party/stb/")
+set(STB_INCLUDE  "${STB_PATH}")
+
 set(NIS_PATH "${CMAKE_SOURCE_DIR}/../NIS")
 
 set(SAMPLES_PATH "${CMAKE_SOURCE_DIR}")
@@ -53,10 +60,10 @@ set(DX_SAMPLE_MEDIA "${SAMPLES_PATH}/media/images/1080.png"
 
 set_source_files_properties(${DX_SAMPLE_SHADERS} PROPERTIES VS_COPY_TO_OUT_DIR TRUE)
 
-source_group("ui" FILES ${IMGUI_SRC})
+source_group("external" FILES ${IMGUI_SRC} ${TINYEXR_SRC})
 source_group("shaders" FILES ${DX_SAMPLE_SHADERS})
-add_executable(${PROJECT_NAME} ${DX_SAMPLE_SRC} ${IMGUI_SRC} ${DX_SAMPLE_HEADERS} ${DX_SAMPLE_SHADERS})
-target_include_directories (${PROJECT_NAME} PUBLIC include ${IMGUI_INCLUDE} ${NIS_PATH} ${SAMPLES_PATH}/common)
+add_executable(${PROJECT_NAME} ${DX_SAMPLE_SRC} ${IMGUI_SRC} ${TINYEXR_SRC} ${DX_SAMPLE_HEADERS} ${DX_SAMPLE_SHADERS})
+target_include_directories (${PROJECT_NAME} PUBLIC include ${IMGUI_INCLUDE} ${TINYEXR_INCLUDE} ${STB_INCLUDE} ${NIS_PATH} ${SAMPLES_PATH}/common)
 
 add_custom_command(
   TARGET ${PROJECT_NAME} POST_BUILD

@@ -1,34 +1,34 @@
 // The MIT License(MIT)
-// 
+//
 // Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
 // the Software without restriction, including without limitation the rights to
 // use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of
 // the Software, and to permit persons to whom the Software is furnished to do so,
 // subject to the following conditions :
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- 
+
 #pragma once
- 
+
 #include <dxgi1_4.h>
 #include <d3d11.h>
 #include <wrl.h>
 #include <iostream>
 #include <vector>
- 
+
 using namespace Microsoft::WRL;
- 
+
 struct Adapter
 {
     std::string Description;
@@ -40,7 +40,7 @@ struct Adapter
     size_t DedicatedSystemMemory;
     size_t SharedSystemMemory;
 };
- 
+
 class DeviceResources
 {
 public:
@@ -51,8 +51,8 @@ public:
     void present(uint32_t SyncInterval, uint32_t Flags) { m_swapChain->Present(SyncInterval, Flags); }
     ID3D11Device* device() { return m_d3dDevice.Get(); }
     ID3D11DeviceContext* context() { return m_d3dContext.Get(); }
-    bool initialized() { return m_initialized; }
- 
+    bool isInitialized() { return m_initialized; }
+
     IDXGISwapChain* swapChain() { return m_swapChain.Get();  }
     ID3D11Texture2D* renderTarget() { return m_d3dRenderTarget.Get(); }
     void DeviceResources::setRenderTarget() {
@@ -67,8 +67,8 @@ public:
     void createLinearClampSampler(ID3D11SamplerState** ppSampleState);
     void createConstBuffer(void* initialData, uint32_t size, ID3D11Buffer** ppBuffer);
     void updateConstBuffer(void* data, uint32_t size, ID3D11Buffer* ppBuffer);
-    void getTextureData(ID3D11Texture2D* texture, uint8_t* data);
- 
+    void getTextureData(ID3D11Texture2D* texture, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& rowPitch);
+
     uint32_t width() { return m_width; }
     uint32_t height() { return m_height; }
     Adapter getAdapter() { return m_adapter; }

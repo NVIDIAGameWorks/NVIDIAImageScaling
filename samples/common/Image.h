@@ -1,17 +1,17 @@
 // The MIT License(MIT)
-// 
+//
 // Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
 // the Software without restriction, including without limitation the rights to
 // use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of
 // the Software, and to permit persons to whom the Software is furnished to do so,
 // subject to the following conditions :
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -20,34 +20,28 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
+#define NOMINMAX
 
-#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <wincodec.h>
-#include <wrl.h>
 
-using namespace Microsoft::WRL;
-
-class Image
+namespace img
 {
-public:
-    Image();
-    void load(const std::filesystem::path& FilePath);
-    uint32_t width() { return m_width; }
-    uint32_t height() { return m_height; }
-    uint32_t bpp() { return m_bpp; }
-    uint32_t rowPitch() { return m_rowPitch; }
-    uint32_t imageSize() { return m_imageSize; }
-    uint8_t* data() { return m_data.data(); }
-protected:
-    void LoadWIC(const std::wstring& filename);
-private:    
-    uint32_t m_width, m_height;
-    uint32_t m_bpp;
-    std::vector<uint8_t> m_data;
-    uint32_t m_rowPitch;
-    uint32_t m_imageSize;
-    ComPtr<IWICImagingFactory> m_WICFactory;
-};
+    enum class Fmt : uint8_t
+    {
+        R8G8B8A8 = 0,
+        R32G32B32A32 = 1,
+        R16G16B16A16 = 2
+    };
+
+    uint32_t bytesPerPixel(Fmt fmt);
+
+    void load(const std::string& fileName, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& outRowPitch, Fmt outFormat, uint32_t outRowPitchAlignment = 1);
+    void loadPNG(const std::string& fileName, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& outRowPitch, Fmt outFormat, uint32_t outRowPitchAlignment = 1);
+    void loadEXR(const std::string& fileName, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& outRowPitch, Fmt outFormat, uint32_t outRowPitchAlignment = 1);
+
+    void save(const std::string& fileName, uint8_t* data, uint32_t width, uint32_t height, uint32_t channels, uint32_t rowPitch, Fmt format);
+    void savePNG(const std::string& fileName, uint8_t* data, uint32_t width, uint32_t height, uint32_t channels, uint32_t rowPitch, Fmt format);
+    void saveEXR(const std::string& fileName, uint8_t* data, uint32_t width, uint32_t height, uint32_t channels, uint32_t rowPitch, Fmt format);
+}

@@ -80,6 +80,12 @@ specified using non-integer data types such as DXGI_FORMAT_R8G8B8A8_UNORM.
 
 The scaler coefficients and USM coefficients format should be specified using float4 type such as
 DXGI_FORMAT_R32G32B32A32_FLOAT or DXGI_FORMAT_R16G16B16A16_FLOAT.
+The coefficients are included in NIS_Config.h file:
+
+fp32 format: coef_scaler, coef_USM
+
+fp16 format: coef_scaler_fp16, coef_USM_fp16 
+
 
 ### Resource States, Buffers, and Sampler:
 
@@ -96,13 +102,14 @@ the correct state.
 
 ## Adding NVIDIA Image Scaling SDK to a Project
 
-Include NIS_Scaler.h directly in your application or alternative use the provided NIS_Main.hlsl shader file.
+Include NIS_Scaler.h directly in your application or alternative use the provided NIS_Main.hlsl or NIS_Main.glsl shader files.
 Use NIS_Config.h to get the ideal shader dispatch values for your platform, to configure the algorithm constant
-values (NVScalerUpdateConfig, and NVSharpenUpdateConfig), and to access the algorithm coefficients (coef_scale and coef_USM).
+values (NVScalerUpdateConfig, and NVSharpenUpdateConfig), and to access the algorithm coefficients (coef_scale, coef_USM, coef_scale_fp16, coef_USM_fp16).
 
 - Device\
   NIS_Scaler.h    : HLSL shader file\
-  NIS_Main.hlsl   : Main HLSL shader example (can be replaced by your own)
+  NIS_Main.hlsl   : Main HLSL shader example (can be replaced by your own) \
+  NIS_Main.glsl   : Main GLSL shader example (can ge replaced by your own)
 
 - Host Configuration\
   NIS_Config.h    : Configuration structure
@@ -116,7 +123,9 @@ values (NVScalerUpdateConfig, and NVSharpenUpdateConfig), and to access the algo
 **NIS_BLOCK_HEIGHT**: pixels per block height. Use GetOptimalBlockHeight query for your platform\
 **NIS_THREAD_GROUP_SIZE**: number of threads per group. Use GetOptimalThreadGroupSize query for your platform\
 **NIS_USE_HALF_PRECISION**: default(**0**) disabled, (1) enable half pression computation\
-**NIS_HLSL_6_2**: default (**0**) HLSL v5, (1) HLSL v6.2\
+**NIS_HLSL**: default (**1**) enabled, (0) disabled\
+**NIS_HLSL_6_2**: default (**0**) HLSL v5, (1) HLSL v6.2 forces NIS_HLSL=1\
+**NIS_GLSL**: default (**0**) disabled, (1) enabled\
 **NIS_VIEWPORT_SUPPORT**: default(**0**) disabled, (1) enable input/output viewport support\
 
 
@@ -128,6 +137,10 @@ values (NVScalerUpdateConfig, and NVSharpenUpdateConfig), and to access the algo
 
 [**NIS_BLOCK_WIDTH**, **NIS_BLOCK_HEIGHT**, **NIS_THREAD_GROUP_SIZE**] = [32, 32, 256]
 
+
+*Defines for HLSL with DXC bindings:*
+
+**NIS_DXC**: (0) disabled, (1) enable HLSL DXC Vulkan support
 
 ## Optimal shader settings
 
@@ -174,6 +187,7 @@ enum class NISHDRMode : uint32_t
 
 
 ## Integration of NVScaler
+The integration instructions in this section can be applied with minimal changes to your own DX11, DX12, or Vulkan application, using HLSL or GLSL.
 
 ### Compile the NIS_Main.hlsl shader
 
@@ -213,12 +227,12 @@ createConstBuffer(&config, &csBuffer);
 ### Create SRV textures for the scaler and USM phase coefficients
 
 ```
-const int rowPitch = kFilterSize * 4;
-const int imageSize = rowPitch * kPhaseCount;
+const int rowPitch = kFilterSize * sizeof(float);  // use for fp32: float, fp16: uint16_t
+const int coeffSize = rowPitch * kPhaseCount;
 
-createTexture2D(kFilterSize / 4, kPhaseCount, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, coef_scaler, rowPitch, imageSize, &scalerTex);
-
-createTexture2D(kFilterSize / 4, kPhaseCount, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, coef_usm, rowPitch, imageSize, &usmTex);
+// Since we are using RGBA format the texture width = kFilterSize / 4
+createTexture2D(kFilterSize / 4, kPhaseCount, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, coef_scaler, rowPitch, coeffSize, &scalerTex);
+createTexture2D(kFilterSize / 4, kPhaseCount, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_USAGE_DEFAULT, coef_usm, rowPitch, coeffSize, &usmTex);
 
 createSRV(scalerTex.Get(), DXGI_FORMAT_R32G32B32A32_FLOAT, &scalerSRV);
 createSRV(usmTex.Get(), DXGI_FORMAT_R32G32B32A32_FLOAT, &usmSRV);
@@ -281,7 +295,7 @@ If your application requires upscaling and sharpening do not use NVSharpen use N
 
 ### Compile the NIS_Main.hlsl shader
 
-NIS_SCALER should be set to 0 and the optimizer isUscaling argument should be set as false.
+NIS_SCALER should be set to 0 and the optimizer isUscaling argument should be set to false.
 
 ```
 bool isUpscaling = false;
@@ -369,7 +383,12 @@ context->Dispatch(UINT(std::ceil(outputWidth / float(blockWidth))),
 - Windows 10 SDK : https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk
 - CMake 3.16 : https://cmake.org/download/
 
+for building the Vulkan sample:
+- Vulkan SDK 1.2.189.2 : https://vulkan.lunarg.com/  
+
 ### Build
+
+For the DirectX11 and DirectX12 samples use the following:
 
 ```
 $> cd samples
@@ -378,4 +397,13 @@ $> cd build
 $> cmake ..
 ```
 
-Open the solution with Visual Studio 2019. Right-click the sample project and select "Set as Startup Project" before building the project
+for building the Vulkan sample:
+
+```
+$> cd samples
+$> mkdir build
+$> cd build
+$> cmake .. -DNIS_VK_SAMPLE=ON
+```
+
+Open the solution with Visual Studio 2019. Right-click the sample project and select "Set as Startup Project" before building the project. For Linux, only the VK sample will be generated.
