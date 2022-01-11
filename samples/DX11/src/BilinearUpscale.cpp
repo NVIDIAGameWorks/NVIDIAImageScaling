@@ -102,16 +102,7 @@ BilinearUpscale::BilinearUpscale(DeviceResources& deviceResources)
 
     BilinearUpdateConfig(m_config, 0, 0, 100, 100, 100, 100, 0, 0, 100, 100, 100, 100);
 
-    D3D11_SAMPLER_DESC samplerDesc;
-    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.MipLODBias = 0.0f;
-    samplerDesc.MaxAnisotropy = 1;
-    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    DX::ThrowIfFailed(m_deviceResources.device()->CreateSamplerState(&samplerDesc, &m_LinearClampSampler));
+    m_deviceResources.createLinearClampSampler(&m_LinearClampSampler);
 
     D3D11_BUFFER_DESC bDesc;
     bDesc.ByteWidth = sizeof(BilinearUpscaleConfig);

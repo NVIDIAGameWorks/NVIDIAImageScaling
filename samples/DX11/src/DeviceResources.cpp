@@ -125,6 +125,7 @@ void DeviceResources::createSRV(ID3D11Resource* pResource, DXGI_FORMAT format, I
 void DeviceResources::createLinearClampSampler(ID3D11SamplerState** ppSampleState)
 {
     D3D11_SAMPLER_DESC samplerDesc;
+    ZeroMemory(&samplerDesc, sizeof(D3D11_SAMPLER_DESC));
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -132,7 +133,7 @@ void DeviceResources::createLinearClampSampler(ID3D11SamplerState** ppSampleStat
     samplerDesc.MipLODBias = 0.0f;
     samplerDesc.MaxAnisotropy = 1;
     samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    samplerDesc.MinLOD = -D3D11_FLOAT32_MAX;
+    samplerDesc.MinLOD = 0;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
     DX::ThrowIfFailed(m_d3dDevice->CreateSamplerState(&samplerDesc, ppSampleState));
 }

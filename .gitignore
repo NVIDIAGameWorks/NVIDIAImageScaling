@@ -35,6 +35,9 @@ Makefile
 *.so.*
 *.a
 
+# except for third-party lib files
+!/samples/third_party/**
+
 # ninja
 .ninja_deps
 .ninja_log

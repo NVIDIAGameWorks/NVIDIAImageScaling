@@ -599,9 +599,8 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
             NVI px = i % numTilePixelsX;
 
             // 0.5 to be in the center of texel
-            // -1.0 to sample top-left corner of 3x3 halo necessary
-            // -kSupportSize/2 to shift by the kernel support size
-            NVF kShift = 0.5f - 1.0f - (kSupportSize - 1) / 2;
+            // - (kSupportSize - 1) / 2 to shift by the kernel support size
+            NVF kShift = 0.5f - (kSupportSize - 1) / 2;
 #if NIS_VIEWPORT_SUPPORT
             const NVF tx = (srcBlockStartX + px + kInputViewportOriginX + kShift) * kSrcNormX;
             const NVF ty = (srcBlockStartY + py + kInputViewportOriginY + kShift) * kSrcNormY;

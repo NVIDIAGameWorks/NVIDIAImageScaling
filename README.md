@@ -1,4 +1,4 @@
-# NVIDIA Image Scaling SDK v1.0
+# NVIDIA Image Scaling SDK v1.0.1
 
 The MIT License(MIT)
 
