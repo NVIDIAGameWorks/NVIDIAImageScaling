@@ -1,6 +1,6 @@
 // The MIT License(MIT)
 //
-// Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright(c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
@@ -20,7 +20,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //---------------------------------------------------------------------------------
-// NVIDIA Image Scaling SDK  - v1.0
+// NVIDIA Image Scaling SDK  - v1.0.2
 //---------------------------------------------------------------------------------
 // The NVIDIA Image Scaling SDK provides a single spatial scaling and sharpening algorithm
 // for cross-platform support. The scaling algorithm uses a 6-tap scaling filter combined
@@ -154,6 +154,7 @@
 #define NVI2 int2
 #define NVU uint
 #define NVU2 uint2
+#define NVB bool
 #if NIS_USE_HALF_PRECISION
 #if NIS_HLSL_6_2
 #define NVH float16_t
@@ -194,6 +195,7 @@
 #define NVI2 ivec2
 #define NVU uint
 #define NVU2 uvec2
+#define NVB bool
 #if NIS_USE_HALF_PRECISION
 #define NVH float16_t
 #define NVH2 f16vec2
@@ -264,41 +266,26 @@ NVF4 GetEdgeMap(NVF p[5][5], NVI i, NVI j)
     NVF e_0_90 = 0;
     NVF e_45_135 = 0;
 
-    if ((g_0_90_max + g_45_135_max) != 0)
+    if (g_0_90_max + g_45_135_max == 0)
     {
-        e_0_90 = g_0_90_max / (g_0_90_max + g_45_135_max);
-        e_0_90 = min(e_0_90, 1.0f);
-        e_45_135 = 1.0f - e_0_90;
+        return NVF4(0, 0, 0, 0);
     }
 
-    NVF e = ((g_0_90_max > (g_0_90_min * kDetectRatio)) && (g_0_90_max > kDetectThres) && (g_0_90_max > g_45_135_min)) ? 1.f : 0.f;
-    NVF edge_0  = (g_0_90_max == g_0) ? e   : 0.f;
-    NVF edge_90 = (g_0_90_max == g_0) ? 0.f : e;
+    e_0_90 = min(g_0_90_max / (g_0_90_max + g_45_135_max), 1.0f);
+    e_45_135 = 1.0f - e_0_90;
 
-    e = ((g_45_135_max > (g_45_135_min * kDetectRatio)) && (g_45_135_max > kDetectThres) && (g_45_135_max > g_0_90_min)) ? 1.f : 0.f;
-    NVF edge_45  = (g_45_135_max == g_45) ? e   : 0.f;
-    NVF edge_135 = (g_45_135_max == g_45) ? 0.f : e;
+    NVB c_0_90 = (g_0_90_max > (g_0_90_min * kDetectRatio)) && (g_0_90_max > kDetectThres) && (g_0_90_max > g_45_135_min);
+    NVB c_45_135 = (g_45_135_max > (g_45_135_min * kDetectRatio)) && (g_45_135_max > kDetectThres) && (g_45_135_max > g_0_90_min);
+    NVB c_g_0_90 = g_0_90_max == g_0;
+    NVB c_g_45_135 = g_45_135_max == g_45;
 
-    NVF weight_0 = 0.f;
-    NVF weight_90 = 0.f;
-    NVF weight_45 = 0.f;
-    NVF weight_135 = 0.f;
-    if ((edge_0 + edge_90 + edge_45 + edge_135) >= 2.0f)
-    {
-        weight_0  = (edge_0 == 1.0f) ? e_0_90 : 0.f;
-        weight_90 = (edge_0 == 1.0f) ? 0.f    : e_0_90;
+    NVF f_e_0_90 = (c_0_90 && c_45_135) ? e_0_90 : 1.0f;
+    NVF f_e_45_135 = (c_0_90 && c_45_135) ? e_45_135 : 1.0f;
 
-        weight_45 =  (edge_45 == 1.0f) ? e_45_135 : 0.f;
-        weight_135 = (edge_45 == 1.0f) ? 0.f      : e_45_135;
-    }
-    else if ((edge_0 + edge_90 + edge_45 + edge_135) >= 1.0f)
-    {
-        weight_0 = edge_0;
-        weight_90 = edge_90;
-        weight_45 = edge_45;
-        weight_135 = edge_135;
-    }
-
+    NVF weight_0 = (c_0_90 && c_g_0_90) ? f_e_0_90 : 0.0f;
+    NVF weight_90 = (c_0_90 && !c_g_0_90) ? f_e_0_90 : 0.0f;
+    NVF weight_45 = (c_45_135 && c_g_45_135) ? f_e_45_135 : 0.0f;
+    NVF weight_135 = (c_45_135 && !c_g_45_135) ? f_e_45_135 : 0.0f;
 
     return NVF4(weight_0, weight_90, weight_45, weight_135);
 }
@@ -339,7 +326,7 @@ void LoadFilterBanksSh(NVI i0, NVI di) {
     // The work is spread over (kPhaseCount * 2) threads
     for (NVI i = i0; i < kPhaseCount * 2; i += di)
     {
-        NVI phase = i / 2;
+        NVI phase = i >> 1;
         NVI vIdx = i & 1;
 
         NVH4 v = NVH4(NVTEX_LOAD(coef_scaler, NVI2(vIdx, phase)));
@@ -366,7 +353,7 @@ void LoadFilterBanksSh(NVI i0, NVI di) {
 
 NVF CalcLTI(NVF p0, NVF p1, NVF p2, NVF p3, NVF p4, NVF p5, NVI phase_index)
 {
-    const bool selector = (phase_index <= kPhaseCount / 2);
+    const NVB selector = (phase_index <= kPhaseCount / 2);
     NVF sel = selector ? p0 : p3;
     const NVF a_min = min(min(p1, p2), sel);
     const NVF a_max = max(max(p1, p2), sel);
@@ -444,120 +431,122 @@ NVF FilterNormal(const NVF p[6][6], NVI phase_x_frac_int, NVI phase_y_frac_int)
     return h_acc;
 }
 
-NVF4 GetDirFilters(NVF p[6][6], NVF phase_x_frac, NVF phase_y_frac, NVI phase_x_frac_int, NVI phase_y_frac_int)
+NVF AddDirFilters(NVF p[6][6], NVF phase_x_frac, NVF phase_y_frac, NVI phase_x_frac_int, NVI phase_y_frac_int, NVF4 w)
 {
-    NVF4 f;
-    // 0 deg filter
-    NVF interp0Deg[6];
+    NVF f = 0;
+    if (w.x > 0.0f)
     {
-        NIS_UNROLL
-        for (NVI i = 0; i < 6; ++i)
+        // 0 deg filter
+        NVF interp0Deg[6];
         {
-            interp0Deg[i] = lerp(p[i][2], p[i][3], phase_x_frac);
+            NIS_UNROLL
+                for (NVI i = 0; i < 6; ++i)
+                {
+                    interp0Deg[i] = lerp(p[i][2], p[i][3], phase_x_frac);
+                }
         }
+        f += EvalPoly6(interp0Deg, phase_y_frac_int) * w.x;
     }
-
-    f.x = EvalPoly6(interp0Deg, phase_y_frac_int);
-
-    // 90 deg filter
-    NVF interp90Deg[6];
+    if (w.y > 0.0f)
     {
-        NIS_UNROLL
-        for (NVI i = 0; i < 6; ++i)
+        // 90 deg filter
+        NVF interp90Deg[6];
         {
-            interp90Deg[i] = lerp(p[2][i], p[3][i], phase_y_frac);
+            NIS_UNROLL
+                for (NVI i = 0; i < 6; ++i)
+                {
+                    interp90Deg[i] = lerp(p[2][i], p[3][i], phase_y_frac);
+                }
         }
+
+        f += EvalPoly6(interp90Deg, phase_x_frac_int) * w.y;
     }
-
-    f.y = EvalPoly6(interp90Deg, phase_x_frac_int);
-
-    //45 deg filter
-    NVF pphase_b45;
-    pphase_b45 = 0.5f + 0.5f * (phase_x_frac - phase_y_frac);
-
-    NVF temp_interp45Deg[7];
-    temp_interp45Deg[1] = lerp(p[2][1], p[1][2], pphase_b45);
-    temp_interp45Deg[3] = lerp(p[3][2], p[2][3], pphase_b45);
-    temp_interp45Deg[5] = lerp(p[4][3], p[3][4], pphase_b45);
+    if (w.z > 0.0f)
     {
-        pphase_b45 = pphase_b45 - 0.5f;
-        NVF a = (pphase_b45 >= 0.f) ? p[0][2] : p[2][0];
-        NVF b = (pphase_b45 >= 0.f) ? p[1][3] : p[3][1];
-        NVF c = (pphase_b45 >= 0.f) ? p[2][4] : p[4][2];
-        NVF d = (pphase_b45 >= 0.f) ? p[3][5] : p[5][3];
-        temp_interp45Deg[0] = lerp(p[1][1], a, abs(pphase_b45));
-        temp_interp45Deg[2] = lerp(p[2][2], b, abs(pphase_b45));
-        temp_interp45Deg[4] = lerp(p[3][3], c, abs(pphase_b45));
-        temp_interp45Deg[6] = lerp(p[4][4], d, abs(pphase_b45));
-    }
+        //45 deg filter
+        NVF pphase_b45 = 0.5f + 0.5f * (phase_x_frac - phase_y_frac);
 
-
-    NVF interp45Deg[6];
-    NVF pphase_p45 = phase_x_frac + phase_y_frac;
-    if (pphase_p45 >= 1)
-    {
-        NIS_UNROLL
-        for (NVI i = 0; i < 6; i++)
+        NVF temp_interp45Deg[7];
+        temp_interp45Deg[1] = lerp(p[2][1], p[1][2], pphase_b45);
+        temp_interp45Deg[3] = lerp(p[3][2], p[2][3], pphase_b45);
+        temp_interp45Deg[5] = lerp(p[4][3], p[3][4], pphase_b45);
         {
-            interp45Deg[i] = temp_interp45Deg[i + 1];
+            pphase_b45 = pphase_b45 - 0.5f;
+            NVF a = (pphase_b45 >= 0.f) ? p[0][2] : p[2][0];
+            NVF b = (pphase_b45 >= 0.f) ? p[1][3] : p[3][1];
+            NVF c = (pphase_b45 >= 0.f) ? p[2][4] : p[4][2];
+            NVF d = (pphase_b45 >= 0.f) ? p[3][5] : p[5][3];
+            temp_interp45Deg[0] = lerp(p[1][1], a, abs(pphase_b45));
+            temp_interp45Deg[2] = lerp(p[2][2], b, abs(pphase_b45));
+            temp_interp45Deg[4] = lerp(p[3][3], c, abs(pphase_b45));
+            temp_interp45Deg[6] = lerp(p[4][4], d, abs(pphase_b45));
         }
-        pphase_p45 = pphase_p45 - 1;
-    }
-    else
-    {
-        NIS_UNROLL
-        for (NVI i = 0; i < 6; i++)
+
+        NVF interp45Deg[6];
+        NVF pphase_p45 = phase_x_frac + phase_y_frac;
+        if (pphase_p45 >= 1)
         {
-            interp45Deg[i] = temp_interp45Deg[i];
+            NIS_UNROLL
+                for (NVI i = 0; i < 6; i++)
+                {
+                    interp45Deg[i] = temp_interp45Deg[i + 1];
+                }
+            pphase_p45 = pphase_p45 - 1;
         }
-    }
-
-    f.z = EvalPoly6(interp45Deg, NVI(pphase_p45 * 64));
-
-    //135 deg filter
-    NVF pphase_b135;
-    pphase_b135 = 0.5f * (phase_x_frac + phase_y_frac);
-
-    NVF temp_interp135Deg[7];
-
-    temp_interp135Deg[1] = lerp(p[3][1], p[4][2], pphase_b135);
-    temp_interp135Deg[3] = lerp(p[2][2], p[3][3], pphase_b135);
-    temp_interp135Deg[5] = lerp(p[1][3], p[2][4], pphase_b135);
-
-    {
-        pphase_b135 = pphase_b135 - 0.5f;
-        NVF a = (pphase_b135 >= 0.f) ? p[5][2] : p[3][0];
-        NVF b = (pphase_b135 >= 0.f) ? p[4][3] : p[2][1];
-        NVF c = (pphase_b135 >= 0.f) ? p[3][4] : p[1][2];
-        NVF d = (pphase_b135 >= 0.f) ? p[2][5] : p[0][3];
-        temp_interp135Deg[0] = lerp(p[4][1], a, abs(pphase_b135));
-        temp_interp135Deg[2] = lerp(p[3][2], b, abs(pphase_b135));
-        temp_interp135Deg[4] = lerp(p[2][3], c, abs(pphase_b135));
-        temp_interp135Deg[6] = lerp(p[1][4], d, abs(pphase_b135));
-    }
-
-
-    NVF interp135Deg[6];
-    NVF pphase_p135 = 1 + (phase_x_frac - phase_y_frac);
-    if (pphase_p135 >= 1)
-    {
-        NIS_UNROLL
-        for (NVI i = 0; i < 6; ++i)
+        else
         {
-            interp135Deg[i] = temp_interp135Deg[i + 1];
+            NIS_UNROLL
+                for (NVI i = 0; i < 6; i++)
+                {
+                    interp45Deg[i] = temp_interp45Deg[i];
+                }
         }
-        pphase_p135 = pphase_p135 - 1;
-    }
-    else
-    {
-        NIS_UNROLL
-        for (NVI i = 0; i < 6; ++i)
-        {
-            interp135Deg[i] = temp_interp135Deg[i];
-        }
-    }
 
-    f.w = EvalPoly6(interp135Deg, NVI(pphase_p135 * 64));
+        f += EvalPoly6(interp45Deg, NVI(pphase_p45 * 64)) * w.z;
+    }
+    if (w.w > 0.0f)
+    {
+        //135 deg filter
+        NVF pphase_b135 = 0.5f * (phase_x_frac + phase_y_frac);
+
+        NVF temp_interp135Deg[7];
+        temp_interp135Deg[1] = lerp(p[3][1], p[4][2], pphase_b135);
+        temp_interp135Deg[3] = lerp(p[2][2], p[3][3], pphase_b135);
+        temp_interp135Deg[5] = lerp(p[1][3], p[2][4], pphase_b135);
+        {
+            pphase_b135 = pphase_b135 - 0.5f;
+            NVF a = (pphase_b135 >= 0.f) ? p[5][2] : p[3][0];
+            NVF b = (pphase_b135 >= 0.f) ? p[4][3] : p[2][1];
+            NVF c = (pphase_b135 >= 0.f) ? p[3][4] : p[1][2];
+            NVF d = (pphase_b135 >= 0.f) ? p[2][5] : p[0][3];
+            temp_interp135Deg[0] = lerp(p[4][1], a, abs(pphase_b135));
+            temp_interp135Deg[2] = lerp(p[3][2], b, abs(pphase_b135));
+            temp_interp135Deg[4] = lerp(p[2][3], c, abs(pphase_b135));
+            temp_interp135Deg[6] = lerp(p[1][4], d, abs(pphase_b135));
+        }
+
+        NVF interp135Deg[6];
+        NVF pphase_p135 = 1 + (phase_x_frac - phase_y_frac);
+        if (pphase_p135 >= 1)
+        {
+            NIS_UNROLL
+                for (NVI i = 0; i < 6; ++i)
+                {
+                    interp135Deg[i] = temp_interp135Deg[i + 1];
+                }
+            pphase_p135 = pphase_p135 - 1;
+        }
+        else
+        {
+            NIS_UNROLL
+                for (NVI i = 0; i < 6; ++i)
+                {
+                    interp135Deg[i] = temp_interp135Deg[i];
+                }
+        }
+
+        f += EvalPoly6(interp135Deg, NVI(pphase_p135 * 64)) * w.w;
+    }
     return f;
 }
 
@@ -593,10 +582,10 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
     // we use texture gather to get extra support necessary
     // to compute 2x2 edge map outputs too
     {
-        for (NVI i = NVI(threadIdx) * 2; i < numTilePixels / 2; i += NIS_THREAD_GROUP_SIZE * 2)
+        for (NVU i = threadIdx * 2; i < NVU(numTilePixels) >> 1; i += NIS_THREAD_GROUP_SIZE * 2)
         {
-            NVI py = (i / numTilePixelsX) * 2;
-            NVI px = i % numTilePixelsX;
+            NVU py = (i / numTilePixelsX) * 2;
+            NVU px = i % numTilePixelsX;
 
             // 0.5 to be in the center of texel
             // - (kSupportSize - 1) / 2 to shift by the kernel support size
@@ -632,7 +621,7 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
                 }
             }
 #endif
-            const NVI idx = py * kTilePitch + px;
+            const NVU idx = py * kTilePitch + px;
             shPixelsY[idx] = NVH(p[0][0]);
             shPixelsY[idx + 1] = NVH(p[0][1]);
             shPixelsY[idx + kTilePitch] = NVH(p[1][0]);
@@ -642,14 +631,14 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
     GroupMemoryBarrierWithGroupSync();
     {
         // fill in the edge map of 2x2 pixels
-        for (NVI i = NVI(threadIdx) * 2; i < numEdgeMapPixels / 2; i += NIS_THREAD_GROUP_SIZE * 2)
+        for (NVU i = threadIdx * 2; i < NVU(numEdgeMapPixels) >> 1; i += NIS_THREAD_GROUP_SIZE * 2)
         {
-            NVI py = (i / numEdgeMapPixelsX) * 2;
-            NVI px = i % numEdgeMapPixelsX;
+            NVU py = (i / numEdgeMapPixelsX) * 2;
+            NVU px = i % numEdgeMapPixelsX;
 
-            const NVI edgeMapIdx = py * kEdgeMapPitch + px;
+            const NVU edgeMapIdx = py * kEdgeMapPitch + px;
 
-            NVI tileCornerIdx = (py+1) * kTilePitch + px + 1;
+            NVU tileCornerIdx = (py+1) * kTilePitch + px + 1;
             NVF p[4][4];
             NIS_UNROLL
             for (NVI j = 0; j < 4; j++)
@@ -668,17 +657,26 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
         }
     }
     LoadFilterBanksSh(NVI(threadIdx), NIS_THREAD_GROUP_SIZE);
-
     GroupMemoryBarrierWithGroupSync();
 
-    for (NVI k = NVI(threadIdx); k < NIS_BLOCK_WIDTH * NIS_BLOCK_HEIGHT; k += NIS_THREAD_GROUP_SIZE)
+    // output coord within a tile
+    const NVI2 pos = NVI2(NVU(threadIdx) % NVU(NIS_BLOCK_WIDTH), NVU(threadIdx) / NVU(NIS_BLOCK_WIDTH));
+    // x coord inside the output image
+    const NVI dstX = dstBlockX + pos.x;
+    // x coord inside the input image
+    const NVF srcX = (0.5f + dstX) * kScaleX - 0.5f;
+    // nearest integer part
+    const NVI px = NVI(floor(srcX) - srcBlockStartX);
+    // fractional part
+    const NVF fx = srcX - floor(srcX);
+    // discretized phase
+    const NVI fx_int = NVI(fx * kPhaseCount);
+
+    for (NVI k = 0; k < NIS_BLOCK_WIDTH * NIS_BLOCK_HEIGHT / NIS_THREAD_GROUP_SIZE; ++k)
     {
-        const NVI2 pos = NVI2(k % NIS_BLOCK_WIDTH, k / NIS_BLOCK_WIDTH);
-
-        const NVI dstX = dstBlockX + pos.x;
-        const NVI dstY = dstBlockY + pos.y;
-
-        const NVF srcX = (0.5f + dstX) * kScaleX - 0.5f;
+        // y coord inside the output image
+        const NVI dstY = dstBlockY + pos.y + k * (NIS_THREAD_GROUP_SIZE / NIS_BLOCK_WIDTH);
+        // y coord inside the input image
         const NVF srcY = (0.5f + dstY) * kScaleY - 0.5f;
 #if NIS_VIEWPORT_SUPPORT
         if (srcX > kInputViewportWidth || srcY > kInputViewportHeight ||
@@ -687,39 +685,12 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
             return;
         }
 #endif
-
-        const NVI px = NVI(floor(srcX) - srcBlockStartX);
+        // nearest integer part
         const NVI py = NVI(floor(srcY) - srcBlockStartY);
-
-        const NVI startTileIdx = py * kTilePitch + px;
-
-        // load 6x6 support to regs
-        NVF p[6][6];
-        {
-            NIS_UNROLL
-            for (NVI i = 0; i < 6; ++i)
-            {
-                NIS_UNROLL
-                for (NVI j = 0; j < 6; ++j)
-                {
-                    p[i][j] = shPixelsY[startTileIdx + i * kTilePitch + j];
-                }
-            }
-        }
-
-        // compute discretized filter phase
-        const NVF fx = srcX - floor(srcX);
+        // fractional part
         const NVF fy = srcY - floor(srcY);
-        const NVI fx_int = NVI(fx * kPhaseCount);
+        // discretized phase
         const NVI fy_int = NVI(fy * kPhaseCount);
-
-        // get traditional scaler filter output
-        const NVF pixel_n = FilterNormal(p, fx_int, fy_int);
-
-        // get directional filter bank output
-        NVF4 opDirYU = GetDirFilters(p, fx, fy, fx_int, fy_int);
-
-        // final luma is a weighted product of directional & normal filters
 
         // generate weights for directional filters
         const NVI startEdgeMapIdx = py * kEdgeMapPitch + px;
@@ -736,14 +707,38 @@ void NVScaler(NVU2 blockIdx, NVU threadIdx)
         }
         const NVF4 w = GetInterpEdgeMap(edge, fx, fy) * NIS_SCALE_INT;
 
-        // final pixel is a weighted sum filter outputs
-        const NVF opY = (opDirYU.x * w.x + opDirYU.y * w.y + opDirYU.z * w.z + opDirYU.w * w.w +
-            pixel_n * (NIS_SCALE_FLOAT - w.x - w.y - w.z - w.w)) * (1.0f / NIS_SCALE_FLOAT);
+        // load 6x6 support to regs
+        const NVI startTileIdx = py * kTilePitch + px;
+        NVF p[6][6];
+        {
+            NIS_UNROLL
+            for (NVI i = 0; i < 6; ++i)
+            {
+                NIS_UNROLL
+                for (NVI j = 0; j < 6; ++j)
+                {
+                    p[i][j] = shPixelsY[startTileIdx + i * kTilePitch + j];
+                }
+            }
+        }
+
+        // weigth for luma
+        const NVF baseWeight = NIS_SCALE_FLOAT - w.x - w.y - w.z - w.w;
+
+        // final luma is a weighted product of directional & normal filters
+        NVF opY = 0;
+
+        // get traditional scaler filter output
+        opY += FilterNormal(p, fx_int, fy_int) * baseWeight;
+
+        // get directional filter bank output
+        opY += AddDirFilters(p, fx, fy, fx_int, fy_int, w);
+
         // do bilinear tap for chroma upscaling
 #if NIS_VIEWPORT_SUPPORT
-        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((srcX + kInputViewportOriginX) * kSrcNormX, (srcY + kInputViewportOriginY) * kSrcNormY));
+        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((srcX + kInputViewportOriginX + 0.5f) * kSrcNormX, (srcY + kInputViewportOriginY + 0.5f) * kSrcNormY));
 #else
-        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((dstX + 0.5f) * kDstNormX, (dstY + 0.5f) * kDstNormY));
+        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((srcX + 0.5f) * kSrcNormX, (srcY + 0.5f) * kSrcNormY));
 #endif
 #if NIS_HDR_MODE == NIS_HDR_MODE_LINEAR
         const NVF kEps = 1e-4f;
@@ -796,7 +791,7 @@ NVF CalcLTIFast(const NVF y[5])
     const NVF a_cont = a_max - a_min;
     const NVF b_cont = b_max - b_min;
 
-    const NVF cont_ratio = max(a_cont, b_cont) / (min(a_cont, b_cont) + kEps * (1.0f / NIS_SCALE_FLOAT));
+    const NVF cont_ratio = max(a_cont, b_cont) / (min(a_cont, b_cont) + kEps);
     return (1.0f - saturate((cont_ratio - kMinContrastRatio) * kRatioNorm)) * kContrastBoost;
 }
 
@@ -883,7 +878,7 @@ void NVSharpen(NVU2 blockIdx, NVU threadIdx)
 
     for (NVI i = NVI(threadIdx) * 2; i < kNumPixelsX * kNumPixelsY / 2; i += NIS_THREAD_GROUP_SIZE * 2)
     {
-        NVU2 pos = NVU2(i % kNumPixelsX, i / kNumPixelsX * 2);
+        NVU2 pos = NVU2(NVU(i) % NVU(kNumPixelsX), NVU(i) / NVU(kNumPixelsX) * 2);
         NIS_UNROLL
         for (NVI dy = 0; dy < 2; dy++)
         {
@@ -907,7 +902,7 @@ void NVSharpen(NVU2 blockIdx, NVU threadIdx)
 
     for (NVI k = NVI(threadIdx); k < NIS_BLOCK_WIDTH * NIS_BLOCK_HEIGHT; k += NIS_THREAD_GROUP_SIZE)
     {
-        const NVI2 pos = NVI2(k % NIS_BLOCK_WIDTH, k / NIS_BLOCK_WIDTH);
+        const NVI2 pos = NVI2(NVU(k) % NVU(NIS_BLOCK_WIDTH), NVU(k) / NVU(NIS_BLOCK_WIDTH));
 
         // load 5x5 support to regs
         NVF p[5][5];
@@ -942,9 +937,9 @@ void NVSharpen(NVU2 blockIdx, NVU threadIdx)
 #endif
 
 #if NIS_VIEWPORT_SUPPORT
-        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((dstX + kInputViewportOriginX) * kSrcNormX, (dstY + kInputViewportOriginY) * kSrcNormY));
+        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((dstX + kInputViewportOriginX + 0.5f) * kSrcNormX, (dstY + kInputViewportOriginY + 0.5f) * kSrcNormY));
 #else
-        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((dstX + 0.5f) * kDstNormX, (dstY + 0.5f) * kDstNormY));
+        NVF4 op = NVTEX_SAMPLE(in_texture, samplerLinearClamp, NVF2((dstX + 0.5f) * kSrcNormX, (dstY + 0.5f) * kSrcNormY));
 #endif
 #if NIS_HDR_MODE == NIS_HDR_MODE_LINEAR
         const NVF kEps = 1e-4f * kHDRCompressionFactor * kHDRCompressionFactor;

@@ -1,6 +1,6 @@
 // The MIT License(MIT)
 //
-// Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright(c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
@@ -45,7 +45,7 @@ NVScaler::NVScaler(DeviceResources& deviceResources, const std::vector<std::stri
     if (shaderPath.empty())
         throw std::runtime_error("Shader file not found" + shaderName);
 
-    NISOptimizer opt(true, NISGPUArchitecture::NVIDIA_Generic);
+    NISOptimizer opt(true, NISGPUArchitecture::NVIDIA_Generic_fp16);
     m_blockWidth = opt.GetOptimalBlockWidth();
     m_blockHeight = opt.GetOptimalBlockHeight();
     uint32_t threadGroupSize = opt.GetOptimalThreadGroupSize();

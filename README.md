@@ -1,8 +1,8 @@
-# NVIDIA Image Scaling SDK v1.0.1
+# NVIDIA Image Scaling SDK v1.0.2
 
 The MIT License(MIT)
 
-Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright(c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files(the "Software"), to deal in
@@ -84,7 +84,7 @@ The coefficients are included in NIS_Config.h file:
 
 fp32 format: coef_scaler, coef_USM
 
-fp16 format: coef_scaler_fp16, coef_USM_fp16 
+fp16 format: coef_scaler_fp16, coef_USM_fp16
 
 
 ### Resource States, Buffers, and Sampler:
@@ -96,7 +96,7 @@ the correct state.
 - The output texture must be in read/write state. Unordered Access View (UAV) in DirectX
 - The coefficients texture for NVScaler must be in read state. Shader Resource View (SRV) in DirectX
 - The configuration variables must be passed as constant buffer. Constant Buffer View (CBV) in DirectX
-- The sampler for texture pixel sampling. Linear clamp SamplerState in Direct
+- The sampler for texture pixel sampling must use linear filter interpolation and clamp to edge addressing mode
 
 
 
@@ -144,14 +144,15 @@ values (NVScalerUpdateConfig, and NVSharpenUpdateConfig), and to access the algo
 
 ## Optimal shader settings
 
-To get optimal performance of NvScaler and NvSharpen for current and future hardware, it is recommended that the following API is used to obtain the values for NIS_BLOCK_WIDTH, NIS_BLOCK_HEIGHT, and NIS_THREAD_GROUP_SIZE.
+To get optimal performance of NVScaler and NVSharpen for current and future hardware, it is recommended that the following API is used to obtain the values for NIS_BLOCK_WIDTH, NIS_BLOCK_HEIGHT, and NIS_THREAD_GROUP_SIZE. These values can be used to compile permutations of NVScaler and NVSharpen offline.
 
 ```
 enum class NISGPUArchitecture : uint32_t
 {
     NVIDIA_Generic = 0,
     AMD_Generic = 1,
-    Intel_Generic = 2
+    Intel_Generic = 2,
+    NVIDIA_Generic_fp16 = 3,
 };
 ```
 
@@ -191,16 +192,18 @@ The integration instructions in this section can be applied with minimal changes
 
 ### Compile the NIS_Main.hlsl shader
 
-NIS_SCALER should be set to 1, and isUscaling should be pass as true.
+NIS_SCALER should be set to 1, and the isUpscaling argument should set to true.
 
 ```
-NISOptimizer opt(true, NISGPUArchitecture::NVIDIA_Generic);
+bool isUpscaling = true;
+// Note: NISOptimizer is optional and these values can be cached offline
+NISOptimizer opt(isUpscaling, NISGPUArchitecture::NVIDIA_Generic);
 uint32_t blockWidth = opt.GetOptimalBlockWidth();
 uint32_t blockHeight = opt.GetOptimalBlockHeight();
 uint32_t threadGroupSize = opt.GetOptimalThreadGroupSize();
 
 Defines defines;
-defines.add("NIS_SCALER", true);
+defines.add("NIS_SCALER", isUpscaling);
 defines.add("NIS_HDR_MODE", hdrMode);
 defines.add("NIS_BLOCK_WIDTH", blockWidth);
 defines.add("NIS_BLOCK_HEIGHT", blockHeight);
@@ -295,10 +298,11 @@ If your application requires upscaling and sharpening do not use NVSharpen use N
 
 ### Compile the NIS_Main.hlsl shader
 
-NIS_SCALER should be set to 0 and the optimizer isUscaling argument should be set to false.
+NIS_SCALER should be set to 0 and the optimizer isUpscaling argument should be set to false.
 
 ```
 bool isUpscaling = false;
+// Note: NISOptimizer is optional and these values can be cached offline
 NISOptimizer opt(isUpscaling, NISGPUArchitecture::NVIDIA_Generic);
 uint32_t blockWidth = opt.GetOptimalBlockWidth();
 uint32_t blockHeight = opt.GetOptimalBlockHeight();
@@ -384,7 +388,7 @@ context->Dispatch(UINT(std::ceil(outputWidth / float(blockWidth))),
 - CMake 3.16 : https://cmake.org/download/
 
 for building the Vulkan sample:
-- Vulkan SDK 1.2.189.2 : https://vulkan.lunarg.com/  
+- Vulkan SDK 1.2.189.2 : https://vulkan.lunarg.com/
 
 ### Build
 

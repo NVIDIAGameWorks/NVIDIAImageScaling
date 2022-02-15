@@ -1,6 +1,6 @@
 // The MIT License(MIT)
 //
-// Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright(c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
@@ -86,8 +86,7 @@ void DeviceResources::create(HWND hWnd, uint32_t adapterIdx)
 
     // Create device
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
-    HRESULT hr = D3D12CreateDevice(nullptr, featureLevel, __uuidof(ID3D12Device), &m_device);
-    //m_device->SetStablePowerState(true);
+    HRESULT hr = D3D12CreateDevice(pAdapter.Get(), featureLevel, __uuidof(ID3D12Device), &m_device);
 
     // [DEBUG] Setup debug interface to break on any warnings/errors
 #ifdef DX12_ENABLE_DEBUG_LAYER
@@ -253,7 +252,7 @@ void DeviceResources::Present(uint32_t SyncInterval, uint32_t Flags)
     {
         m_swapChain->Present(SyncInterval, Flags);
         m_timer.ReadBack();
-    }    
+    }
     MoveToNextFrame();
 }
 

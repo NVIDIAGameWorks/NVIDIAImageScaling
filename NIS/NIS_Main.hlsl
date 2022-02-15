@@ -1,6 +1,6 @@
 // The MIT License(MIT)
 //
-// Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright(c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
@@ -79,7 +79,7 @@ NIS_BINDING(0) cbuffer cb : register(b0)
 
 NIS_BINDING(1) SamplerState samplerLinearClamp : register(s0);
 NIS_BINDING(2) Texture2D in_texture            : register(t0);
-NIS_BINDING(3) RWTexture2D<unorm float4> out_texture : register(u0);
+NIS_BINDING(3) RWTexture2D<float4> out_texture : register(u0);
 #if NIS_SCALER
 NIS_BINDING(4) Texture2D coef_scaler           : register(t1);
 NIS_BINDING(5) Texture2D coef_usm              : register(t2);

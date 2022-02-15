@@ -1,6 +1,6 @@
 // The MIT License(MIT)
 //
-// Copyright(c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright(c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files(the "Software"), to deal in
@@ -78,7 +78,7 @@ NVSharpen::NVSharpen(DeviceResources& deviceResources,  const std::vector<std::s
     library->CreateIncludeHandler(&includeHandler);
     std::vector<LPCWSTR> args{ L"-O3", L"-enable-16bit-types" };
     ComPtr<IDxcOperationResult> result;
-    HRESULT hr = compiler->Compile(sourceBlob.Get(), wShaderFilename.c_str(), L"main", L"cs_6_2", args.data(), uint32_t(args.size()), 
+    HRESULT hr = compiler->Compile(sourceBlob.Get(), wShaderFilename.c_str(), L"main", L"cs_6_2", args.data(), uint32_t(args.size()),
         defines.data(), uint32_t(defines.size()), includeHandler.Get(), &result);
     if (SUCCEEDED(hr))
         result->GetStatus(&hr);
