@@ -73,7 +73,7 @@ layout(set=0,binding=0) uniform const_buffer
 
 layout(set=0,binding=1) uniform sampler samplerLinearClamp;
 layout(set=0,binding=2) uniform texture2D in_texture;
-layout(set=0,binding=3,rgba8_snorm) uniform image2D out_texture;
+layout(set=0,binding=3) uniform writeonly image2D out_texture;
 
 #if NIS_SCALER
 layout(set=0,binding=4) uniform texture2D coef_scaler;
