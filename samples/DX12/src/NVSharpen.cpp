@@ -54,10 +54,15 @@ NVSharpen::NVSharpen(DeviceResources& deviceResources,  const std::vector<std::s
     std::wstring wNIS_BLOCK_HEIGHT = widen(toStr(m_blockHeight));
     std::wstring wNIS_THREAD_GROUP_SIZE = widen(toStr(threadGroupSize));
     std::wstring wNIS_HDR_MODE = widen(toStr(uint32_t(NISHDRMode::None)));
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS4 isFeatureSupport = {1, };
+    DX::ThrowIfFailed(m_deviceResources.device()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS4, &isFeatureSupport, sizeof(isFeatureSupport)));
+    std::wstring wNIS_HALF_SHADER_OP = widen(toStr(BOOL(isFeatureSupport.Native16BitShaderOpsSupported)));
+
     std::vector<DxcDefine> defines {
         {L"NIS_SCALER", L"0"},
         {L"NIS_HDR_MODE", wNIS_HDR_MODE.c_str()},
-        {L"NIS_USE_HALF_PRECISION", L"1"},
+        {L"NIS_USE_HALF_PRECISION", wNIS_HALF_SHADER_OP.c_str()},
         {L"NIS_HLSL_6_2", L"1"},
         {L"NIS_BLOCK_WIDTH", wNIS_BLOCK_WIDTH.c_str()},
         {L"NIS_BLOCK_HEIGHT", wNIS_BLOCK_WIDTH.c_str()},
