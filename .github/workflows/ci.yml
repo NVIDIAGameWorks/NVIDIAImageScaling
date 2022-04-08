@@ -1,0 +1,15 @@
+name: Build
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: cd samples && mkdir build
+      - run: cmake ..
+        working-directory: samples/build
+      - run: cmake --build .
+        working-directory: samples/build
