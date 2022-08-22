@@ -217,6 +217,38 @@ namespace img
         free(image);
     }
 
+    void rgb2yuv(const uint8_t r, const uint8_t g, const uint8_t b, uint8_t& y, uint8_t& u, uint8_t& v)
+    {
+        y = uint8_t(0.257f * r + 0.504f * g + 0.098f * b + 16.0f);
+        u = uint8_t(-0.148f * r - 0.291f * g + 0.439f * b + 128.0f);
+        v = uint8_t(0.439f * r - 0.368f * g - 0.071f * b + 128.0f);
+    }
+
+    void rgba2yuv420(const std::vector<uint8_t>& input, std::vector<uint8_t>& output, uint32_t width, uint32_t height)
+    {
+        uint32_t sizeY = width * height;
+        uint32_t sizeUV = width * height / 4 * 2;
+        output.resize(uint64_t(sizeY) + sizeUV);
+        uint32_t idx = 0;
+        uint32_t idxy = 0;
+        uint32_t idxuv = width * height;
+        for (uint32_t yp = 0; yp < height; ++yp) {
+            for (uint32_t xp = 0; xp < width; ++xp) {
+                uint8_t y, u, v;
+                uint8_t r = input[idx++];
+                uint8_t g = input[idx++];
+                uint8_t b = input[idx++];
+                idx++;
+                rgb2yuv(r, g, b, y, u, v);
+                output[idxy++] = y;
+                if (yp % 2 == 0 && xp % 2 == 0) {
+                    output[idxuv++] = u;
+                    output[idxuv++] = v;
+                }
+            }
+        }
+    }
+
     void save(const std::string& fileName, uint8_t* data, uint32_t width, uint32_t height, uint32_t channels, uint32_t rowPitch, Fmt format)
     {
         std::string extension = std::filesystem::path(fileName).extension().string();

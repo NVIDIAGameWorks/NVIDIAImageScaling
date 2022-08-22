@@ -19,6 +19,12 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+//---------------------------------------------------------------------------------
+// NVIDIA Image Scaling SDK  - v1.0.3
+//---------------------------------------------------------------------------------
+// GLSL main example
+//---------------------------------------------------------------------------------
+
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable

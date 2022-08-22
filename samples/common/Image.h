@@ -40,6 +40,7 @@ namespace img
     void load(const std::string& fileName, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& outRowPitch, Fmt outFormat, uint32_t outRowPitchAlignment = 1);
     void loadPNG(const std::string& fileName, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& outRowPitch, Fmt outFormat, uint32_t outRowPitchAlignment = 1);
     void loadEXR(const std::string& fileName, std::vector<uint8_t>& data, uint32_t& width, uint32_t& height, uint32_t& outRowPitch, Fmt outFormat, uint32_t outRowPitchAlignment = 1);
+    void rgba2yuv420(const std::vector<uint8_t>& input, std::vector<uint8_t>& output, uint32_t width, uint32_t height);
 
     void save(const std::string& fileName, uint8_t* data, uint32_t width, uint32_t height, uint32_t channels, uint32_t rowPitch, Fmt format);
     void savePNG(const std::string& fileName, uint8_t* data, uint32_t width, uint32_t height, uint32_t channels, uint32_t rowPitch, Fmt format);

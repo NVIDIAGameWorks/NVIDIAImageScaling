@@ -33,3 +33,11 @@ if(NIS_VK_SAMPLE)
 
     add_subdirectory (VK)
 endif()
+
+if (WIN32 AND NIS_SL_SAMPLE)
+    add_subdirectory (Streamline)
+endif()
+
+if (WIN32 AND NIS_NV12_SAMPLE)
+    add_subdirectory (NV12)
+endif()
